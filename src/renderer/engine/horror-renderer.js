@@ -30,6 +30,8 @@ class HorrorRenderer {
     this.shakeY = 0;
     this.fogDensity = 0.4;
     this.heartbeatScale = 0;
+    this.walkDistance = 0; // forward creeping motion
+    this.walkSpeed = 0.003;
 
     // Entity & Jumpscare
     this.entityActive = false;
@@ -165,26 +167,45 @@ class HorrorRenderer {
   // ---- Scene Rendering ----
 
   _drawHallway() {
-    const cx = this.width / 2 + this.camX;
-    const cy = this.height / 2 + this.camY;
+    this.walkDistance += this.walkSpeed;
+    const headBobY = Math.sin(this.walkDistance * 28) * 4;
+    const headBobX = Math.cos(this.walkDistance * 14) * 2.5;
+
+    const cx = this.width / 2 + this.camX + headBobX;
+    const cy = this.height / 2 + this.camY + headBobY;
 
     // Vanishing point at the end of the hall
-    const depthSteps = 10;
-    const endW = this.width * 0.12;
-    const endH = this.height * 0.18;
+    const depthSteps = 12;
+    const endW = this.width * 0.10;
+    const endH = this.height * 0.16;
     const endX = cx - endW / 2;
     const endY = cy - endH / 2;
 
-    // Draw End Wall (The dark doorway at the end)
-    this.ctx.fillStyle = `rgb(${10 + this.colorShift * 15}, 6, 8)`;
+    // 1. Draw End Wall & Dark Threshold
+    this.ctx.fillStyle = `rgb(${8 + this.colorShift * 18}, 4, 6)`;
     this.ctx.fillRect(endX, endY, endW, endH);
 
-    // Doorway frame at the end
-    this.ctx.strokeStyle = `rgba(${120 + this.colorShift * 80}, 30, 35, 0.4)`;
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(endX, endY, endW, endH);
+    // 2. Hanging swinging ceiling lamp at the end
+    const lampSwing = Math.sin(this.time * 2) * 12;
+    const lampX = cx + lampSwing * 0.4;
+    const lampY = endY + 20;
 
-    // Draw Perspective Lines: Ceiling, Floor, Wall edges
+    this.ctx.strokeStyle = '#333';
+    this.ctx.lineWidth = 1.5;
+    this.ctx.beginPath();
+    this.ctx.moveTo(cx, 0);
+    this.ctx.lineTo(lampX, lampY);
+    this.ctx.stroke();
+
+    // Lamp light pulse
+    const bulbGlow = this.ctx.createRadialGradient(lampX, lampY, 2, lampX, lampY, 80);
+    bulbGlow.addColorStop(0, `rgba(255, 180, 80, ${0.35 * this.flashlightFlicker})`);
+    bulbGlow.addColorStop(0.5, `rgba(180, 40, 30, ${0.12 * this.flashlightFlicker})`);
+    bulbGlow.addColorStop(1, 'transparent');
+    this.ctx.fillStyle = bulbGlow;
+    this.ctx.fillRect(lampX - 80, lampY - 80, 160, 160);
+
+    // 3. Perspective Lines: Ceiling, Floor, Wall edges
     const corners = [
       [0, 0, endX, endY], // top-left
       [this.width, 0, endX + endW, endY], // top-right
@@ -192,8 +213,8 @@ class HorrorRenderer {
       [0, this.height, endX, endY + endH], // bottom-left
     ];
 
-    this.ctx.strokeStyle = `rgba(${70 + this.colorShift * 60}, 40, 45, 0.35)`;
-    this.ctx.lineWidth = 2;
+    this.ctx.strokeStyle = `rgba(${80 + this.colorShift * 60}, 35, 40, 0.45)`;
+    this.ctx.lineWidth = 2.5;
     for (const [x1, y1, x2, y2] of corners) {
       this.ctx.beginPath();
       this.ctx.moveTo(x1, y1);
@@ -201,39 +222,47 @@ class HorrorRenderer {
       this.ctx.stroke();
     }
 
-    // Floorboards & Wall Ribs along the depth
-    for (let i = 1; i <= depthSteps; i++) {
-      const t = i / depthSteps;
-      const w = this.width + (endW - this.width) * t;
-      const h = this.height + (endH - this.height) * t;
+    // 4. Moving Wall Ribs & Floor Planks (Continuous walking animation)
+    for (let i = 0; i < depthSteps; i++) {
+      const rawT = i / depthSteps + (this.walkDistance % (1 / depthSteps));
+      const t = Math.max(0.01, Math.min(0.99, rawT));
+
+      const w = this.width * (1 - t * 0.9);
+      const h = this.height * (1 - t * 0.84);
       const x = cx - w / 2;
       const y = cy - h / 2;
 
-      const alpha = (1 - t * 0.7) * 0.3;
-      this.ctx.strokeStyle = `rgba(${80 + this.colorShift * 70}, 45, 50, ${alpha})`;
-      this.ctx.lineWidth = 1.5;
+      const alpha = Math.sin(t * Math.PI) * 0.45;
+      this.ctx.strokeStyle = `rgba(${110 + this.colorShift * 60}, 45, 50, ${alpha})`;
+      this.ctx.lineWidth = 2;
       this.ctx.strokeRect(x, y, w, h);
 
       // Floor plank lines
       const floorY = y + h;
       this.ctx.beginPath();
-      this.ctx.moveTo(x + w * 0.35, floorY);
-      this.ctx.lineTo(cx - endW * 0.15, endY + endH);
-      this.ctx.moveTo(x + w * 0.65, floorY);
-      this.ctx.lineTo(cx + endW * 0.15, endY + endH);
+      this.ctx.moveTo(x + w * 0.25, floorY);
+      this.ctx.lineTo(cx - endW * 0.2, endY + endH);
+      this.ctx.moveTo(x + w * 0.5, floorY);
+      this.ctx.lineTo(cx, endY + endH);
+      this.ctx.moveTo(x + w * 0.75, floorY);
+      this.ctx.lineTo(cx + endW * 0.2, endY + endH);
       this.ctx.stroke();
 
-      // Side doors along the hallway
-      if (i % 2 === 0 && t < 0.8) {
-        // Left door
-        const doorTop = y + h * 0.2;
-        const doorBottom = y + h;
-        this.ctx.fillStyle = `rgba(0, 0, 0, 0.4)`;
-        this.ctx.fillRect(x - 15, doorTop, 15, doorBottom - doorTop);
-        this.ctx.strokeStyle = `rgba(${90 + this.colorShift * 50}, 30, 30, 0.3)`;
-        this.ctx.strokeRect(x - 15, doorTop, 15, doorBottom - doorTop);
+      // Side door frames
+      if (i % 2 === 0 && t > 0.2 && t < 0.85) {
+        const doorW = 20 * (1 - t * 0.7);
+        const doorTop = y + h * 0.22;
+        const doorBottom = floorY;
+
+        this.ctx.fillStyle = `rgba(0, 0, 0, ${0.7 - t * 0.3})`;
+        this.ctx.fillRect(x - doorW, doorTop, doorW, doorBottom - doorTop);
+        this.ctx.strokeStyle = `rgba(160, 40, 40, ${alpha * 0.8})`;
+        this.ctx.strokeRect(x - doorW, doorTop, doorW, doorBottom - doorTop);
       }
     }
+
+    // 5. Silhouette of The Entity watching from the end of the hall
+    this._drawStalkerAtEnd(cx, cy, endW, endH, endX, endY);
 
     // Distant ominous glow down the hallway
     const glow = this.ctx.createRadialGradient(cx, cy, 5, cx, cy, endW * 1.5);
@@ -241,6 +270,37 @@ class HorrorRenderer {
     glow.addColorStop(1, 'transparent');
     this.ctx.fillStyle = glow;
     this.ctx.fillRect(cx - endW * 1.5, cy - endH * 1.5, endW * 3, endH * 3);
+  }
+
+  _drawStalkerAtEnd(cx, cy, endW, endH, endX, endY) {
+    // Dark silhouetted entity standing under the swinging light at the end of the hall
+    const stalkerScale = 1.0 + this.colorShift * 1.6;
+    const sw = endW * 0.45 * stalkerScale;
+    const sh = endH * 0.85 * stalkerScale;
+    const sy = endY + endH - sh;
+
+    this.ctx.fillStyle = '#020102';
+    // Head
+    this.ctx.beginPath();
+    this.ctx.arc(cx, sy + sh * 0.2, sw * 0.35, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Body
+    this.ctx.beginPath();
+    this.ctx.moveTo(cx - sw * 0.55, sy + sh * 0.4);
+    this.ctx.lineTo(cx + sw * 0.55, sy + sh * 0.4);
+    this.ctx.lineTo(cx + sw * 0.35, sy + sh);
+    this.ctx.lineTo(cx - sw * 0.35, sy + sh);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Piercing glowing red eyes that pulse with player heartbeat
+    const eyeAlpha = 0.6 + Math.sin(this.time * 6) * 0.4;
+    this.ctx.fillStyle = `rgba(255, 20, 20, ${eyeAlpha})`;
+    this.ctx.beginPath();
+    this.ctx.arc(cx - sw * 0.12, sy + sh * 0.19, 1.8, 0, Math.PI * 2);
+    this.ctx.arc(cx + sw * 0.12, sy + sh * 0.19, 1.8, 0, Math.PI * 2);
+    this.ctx.fill();
   }
 
   _drawFlashlightLighting() {

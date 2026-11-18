@@ -131,8 +131,11 @@
       sceneManager.showNarrative(text, 5000);
     });
 
-    // Show initial narrative immediately
-    sceneManager.showNarrative("You shouldn't have come here.", 4500);
+    // Show initial narrative sequence
+    sceneManager.showNarrative("You shouldn't have come here.", 4000);
+    setTimeout(() => {
+      sceneManager.showNarrative("Aim your light with your mouse. Keep your heart calm.", 4500);
+    }, 4500);
 
     // Show HUD by default so players can see their vitals live
     hud.show();
@@ -141,6 +144,10 @@
     biometrics.onMetrics((data) => {
       latestBiometrics = data;
       hud.update(data);
+
+      if (data.spike) {
+        sceneManager.showNarrative("IT HEARS YOUR PULSE RACING... BREATHE.", 3500);
+      }
     });
 
     // Continuous 10Hz game loop (independent of camera frame rate)
