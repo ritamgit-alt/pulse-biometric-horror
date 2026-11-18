@@ -3,6 +3,7 @@
  *
  * Orchestrates the consent → calibration → horror → end screen flow,
  * running a continuous high-reliability game loop tied to biometrics.
+ * Features the "Heart Hunter" monster sprint and biofeedback calm-down loop.
  */
 
 (function () {
@@ -28,6 +29,9 @@
     stress: 0,
     spike: false,
   };
+
+  let wasChasing = false;
+  let lastChaseTriggerTime = 0;
 
   // ---- Screen Management ----
   function showScreen(id) {
@@ -89,7 +93,7 @@
       latestBiometrics = data;
       const status = document.getElementById('calibration-status');
       if (status && data.pulseRate > 0) {
-        status.textContent = `Pulse: ${Math.round(data.pulseRate)} BPM | Breathing: ${Math.round(data.breathingRate)}/min | Mode: ${data.isSimulated ? 'Simulation' : 'SmartSpectra Live'}`;
+        status.textContent = `Pulse: ${Math.round(data.pulseRate)} BPM | Breathing: ${Math.round(data.breathingRate)}/min | Sensor: ${data.isSimulated ? 'Simulation' : 'SmartSpectra Live'}`;
       }
     });
 
@@ -126,15 +130,10 @@
     renderer.start();
     fearEngine.start();
 
-    // Storytelling narrative display
-    fearEngine.on('narrative', (text) => {
-      sceneManager.showNarrative(text, 5000);
-    });
-
     // Show initial narrative sequence
     sceneManager.showNarrative("You shouldn't have come here.", 4000);
     setTimeout(() => {
-      sceneManager.showNarrative("Aim your light with your mouse. Keep your heart calm.", 4500);
+      sceneManager.showNarrative("Aim your flashlight with your mouse. Keep your heart calm.", 4500);
     }, 4500);
 
     // Show HUD by default so players can see their vitals live
@@ -144,14 +143,35 @@
     biometrics.onMetrics((data) => {
       latestBiometrics = data;
       hud.update(data);
-
-      if (data.spike) {
-        sceneManager.showNarrative("IT HEARS YOUR PULSE RACING... BREATHE.", 3500);
-      }
     });
 
     // Continuous 10Hz game loop (independent of camera frame rate)
     gameLoop = setInterval(() => {
+      const now = Date.now();
+      const baselinePulse = biometrics.baseline.pulseRate || 72;
+      const currentPulse = latestBiometrics.pulseRate || 72;
+      const pulseDelta = currentPulse - baselinePulse;
+
+      // ---- BIOMETRIC CHASE TRIGGER ----
+      // If heart rate spikes (>= baseline + 8 BPM) or sudden spike detected:
+      const shouldChase = (pulseDelta >= 8 || latestBiometrics.spike) && (now - lastChaseTriggerTime > 8000);
+
+      if (shouldChase && !renderer.isChasing) {
+        lastChaseTriggerTime = now;
+        renderer.startMonsterCharge();
+        audio.playMonsterCharge(1.1);
+        sceneManager.showNarrative(`⚠️ HEART CRITICAL (${Math.round(currentPulse)} BPM) — IT HEARS YOU! BREATHE SLOWLY! ⚠️`, 4500);
+      }
+
+      // ---- BIOMETRIC CALM RETREAT ----
+      // If player successfully lowers heart rate back down:
+      if (renderer.isChasing && pulseDelta <= 3) {
+        renderer.retreatMonster();
+        audio.playReliefBreath();
+        sceneManager.showNarrative(`✅ PULSE STABILIZED (${Math.round(currentPulse)} BPM) — IT LOST YOUR TRAIL.`, 3500);
+      }
+
+      // Fear Engine tick
       const events = fearEngine.update(latestBiometrics);
 
       // Pass events to visuals
@@ -166,7 +186,8 @@
         } else if (
           event.type !== 'heartbeat_tick' &&
           event.type !== 'spike_detected' &&
-          event.type !== 'atmosphere'
+          event.type !== 'atmosphere' &&
+          event.type !== 'monster_charge'
         ) {
           audio.triggerScare(event.type, event.intensity || 0.6);
         }
@@ -181,9 +202,12 @@
       if (e.key === 'Escape') {
         endExperience();
       }
-      // Spacebar to trigger a test fright spike
+      // Spacebar: manually trigger a heart spike & monster charge for testing
       if (e.code === 'Space') {
-        biometrics.simulateScare(0.8);
+        biometrics.simulateScare(0.85);
+        renderer.startMonsterCharge();
+        audio.playMonsterCharge(1.1);
+        sceneManager.showNarrative(`⚠️ HEART CRITICAL (${Math.round(latestBiometrics.pulseRate + 15)} BPM) — IT HEARS YOU! ⚠️`, 4000);
       }
     });
   }
