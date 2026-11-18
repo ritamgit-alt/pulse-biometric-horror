@@ -1,0 +1,428 @@
+/* ============================================================
+   PULSE — Horror Experience Stylesheet
+   ============================================================ */
+
+/* ---------- Reset & Base ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #c8c8c8;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: none;
+}
+
+/* ---------- Screens ---------- */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ---------- Consent Screen ---------- */
+.consent-container {
+  text-align: center;
+  max-width: 600px;
+  padding: 40px;
+}
+
+.glitch-text {
+  font-size: 6rem;
+  font-weight: 900;
+  color: #ff1a1a;
+  text-shadow:
+    0 0 10px rgba(255, 26, 26, 0.8),
+    0 0 40px rgba(255, 26, 26, 0.4),
+    0 0 80px rgba(255, 26, 26, 0.2);
+  letter-spacing: 0.3em;
+  animation: glitch 3s infinite;
+  position: relative;
+}
+
+@keyframes glitch {
+  0%, 92%, 100% { transform: none; opacity: 1; }
+  93% { transform: translate(-3px, 1px) skewX(-2deg); opacity: 0.8; }
+  94% { transform: translate(3px, -1px) skewX(2deg); opacity: 0.9; }
+  95% { transform: none; opacity: 1; }
+  96% { transform: translate(-2px, 2px); opacity: 0.7; }
+  97% { transform: none; opacity: 1; }
+}
+
+.tagline {
+  font-size: 1.2rem;
+  color: #666;
+  margin: 20px 0 40px;
+  font-style: italic;
+}
+
+.consent-box {
+  background: rgba(255, 26, 26, 0.05);
+  border: 1px solid rgba(255, 26, 26, 0.2);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: left;
+  margin-bottom: 30px;
+}
+
+.consent-box h3 {
+  color: #ff4444;
+  margin-bottom: 12px;
+}
+
+.consent-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.consent-box li {
+  padding: 6px 0;
+  font-size: 0.9rem;
+}
+
+.consent-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-top: 16px;
+  font-size: 0.95rem;
+}
+
+.consent-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff1a1a;
+}
+
+.pulse-btn {
+  background: transparent;
+  border: 2px solid #ff1a1a;
+  color: #ff1a1a;
+  font-family: 'Courier New', monospace;
+  font-size: 1.3rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  padding: 16px 48px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.pulse-btn:disabled {
+  border-color: #333;
+  color: #333;
+  cursor: not-allowed;
+}
+
+.pulse-btn:not(:disabled):hover {
+  background: rgba(255, 26, 26, 0.15);
+  box-shadow: 0 0 30px rgba(255, 26, 26, 0.3);
+  transform: scale(1.05);
+}
+
+/* ---------- Calibration Screen ---------- */
+.calibration-container {
+  text-align: center;
+  max-width: 500px;
+}
+
+.calibration-container h2 {
+  color: #ff4444;
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+}
+
+.calibration-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+}
+
+.video-container {
+  position: relative;
+  width: 320px;
+  height: 240px;
+  margin: 0 auto 20px;
+  border: 1px solid #222;
+  overflow: hidden;
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.2);
+}
+
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 26, 26, 0.5);
+  animation: scanDown 2s linear infinite;
+}
+
+@keyframes scanDown {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+.signal-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.signal-indicator .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff4444;
+  animation: blink 1s ease infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.signal-indicator.good .dot {
+  background: #44ff44;
+  animation: none;
+}
+
+.calibration-progress {
+  width: 100%;
+  height: 4px;
+  background: #111;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ff1a1a, #ff4444);
+  transition: width 0.5s ease;
+}
+
+.calibration-status {
+  color: #555;
+  font-size: 0.85rem;
+}
+
+/* ---------- Horror Screen ---------- */
+#horror-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Overlay layers */
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.vignette {
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.9) 100%);
+  opacity: 0.8;
+  transition: opacity 0.5s ease;
+}
+
+.fog {
+  background: radial-gradient(ellipse at center, rgba(20, 0, 0, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+.flash {
+  background: #fff;
+  opacity: 0;
+  transition: opacity 0.05s ease;
+}
+
+.static {
+  opacity: 0;
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="%23111"/><rect x="1" y="1" width="1" height="1" fill="%23222"/></svg>');
+  animation: staticFlicker 0.1s steps(2) infinite;
+}
+
+@keyframes staticFlicker {
+  0% { opacity: 0; }
+  50% { opacity: 0.1; }
+  100% { opacity: 0; }
+}
+
+/* Heartbeat border pulse */
+.heartbeat-border {
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  z-index: 6;
+  pointer-events: none;
+  transition: border-color 0.1s ease;
+}
+
+.heartbeat-border.beat {
+  border-color: rgba(255, 0, 0, 0.4);
+  box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.1);
+}
+
+/* HUD */
+.hud {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 20;
+  display: flex;
+  gap: 24px;
+  opacity: 0.6;
+}
+
+.hud.hidden {
+  display: none;
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hud-label {
+  font-size: 0.65rem;
+  color: #ff4444;
+  letter-spacing: 0.15em;
+}
+
+.hud-value {
+  font-size: 1.4rem;
+  color: #ff1a1a;
+  font-weight: bold;
+}
+
+.fear-meter {
+  width: 60px;
+  height: 8px;
+  background: #111;
+  border: 1px solid #333;
+  display: flex;
+  align-items: stretch;
+}
+
+.fear-fill {
+  background: linear-gradient(90deg, #ff4444, #ff0000);
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+/* Narrative text */
+.narrative {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  color: rgba(200, 200, 200, 0.8);
+  font-size: 1.1rem;
+  text-align: center;
+  max-width: 600px;
+  opacity: 0;
+  transition: opacity 1s ease;
+  text-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.narrative.visible {
+  opacity: 1;
+}
+
+/* Hidden webcam for face tracking during horror */
+.webcam-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ---------- End Screen ---------- */
+.end-container {
+  text-align: center;
+  max-width: 600px;
+  padding: 40px;
+}
+
+.fear-report {
+  background: rgba(255, 26, 26, 0.05);
+  border: 1px solid rgba(255, 26, 26, 0.2);
+  border-radius: 8px;
+  padding: 24px;
+  margin: 30px 0;
+  text-align: left;
+}
+
+.fear-report h3 {
+  color: #ff4444;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.fear-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 26, 26, 0.1);
+}
+
+.fear-stat:last-child {
+  border-bottom: none;
+}
+
+.fear-stat-label {
+  color: #888;
+}
+
+.fear-stat-value {
+  color: #ff4444;
+  font-weight: bold;
+}
+
+/* ---------- Custom cursor ---------- */
+body::after {
+  content: '';
+  position: fixed;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 26, 26, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+}

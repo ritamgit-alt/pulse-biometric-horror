@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PULSE</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ========== CONSENT SCREEN ========== -->
+  <div id="consent-screen" class="screen active">
+    <div class="consent-container">
+      <h1 class="glitch-text" data-text="PULSE">PULSE</h1>
+      <p class="tagline">It can hear your heartbeat.</p>
+
+      <div class="consent-box">
+        <h3>⚠️ Camera & Privacy Notice</h3>
+        <p>
+          This experience uses your webcam to read your <strong>pulse rate</strong>,
+          <strong>breathing rate</strong>, and <strong>heart rate variability</strong>
+          via the Presage SmartSpectra SDK.
+        </p>
+        <ul>
+          <li>🔒 All video processing happens <strong>locally on your device</strong></li>
+          <li>🚫 No video data is stored, recorded, or transmitted</li>
+          <li>🧠 Only anonymized vital sign metrics are used for gameplay</li>
+          <li>🛑 You can stop at any time by pressing <kbd>ESC</kbd></li>
+        </ul>
+        <label class="consent-checkbox">
+          <input type="checkbox" id="consent-check">
+          <span>I understand and consent to camera-based vital sign monitoring</span>
+        </label>
+      </div>
+
+      <button id="begin-btn" class="pulse-btn" disabled>ENTER THE DARK</button>
+    </div>
+  </div>
+
+  <!-- ========== CALIBRATION SCREEN ========== -->
+  <div id="calibration-screen" class="screen">
+    <div class="calibration-container">
+      <h2>Calibrating Your Fear...</h2>
+      <p class="calibration-hint">
+        Sit still, face the camera, and breathe normally.<br>
+        We're learning your baseline.
+      </p>
+      <div class="video-container">
+        <video id="webcam-preview" autoplay playsinline muted></video>
+        <div class="scan-line"></div>
+      </div>
+      <div id="signal-quality" class="signal-indicator">
+        <span class="dot"></span>
+        <span id="quality-text">Searching for face...</span>
+      </div>
+      <div class="calibration-progress">
+        <div id="calibration-bar" class="progress-bar"></div>
+      </div>
+      <p id="calibration-status" class="calibration-status">Collecting baseline data...</p>
+    </div>
+  </div>
+
+  <!-- ========== HORROR EXPERIENCE ========== -->
+  <div id="horror-screen" class="screen">
+    <!-- The main horror canvas (Three.js / Canvas 2D) -->
+    <canvas id="horror-canvas"></canvas>
+
+    <!-- Vignette & atmospheric overlays -->
+    <div id="vignette-overlay" class="overlay vignette"></div>
+    <div id="fog-overlay" class="overlay fog"></div>
+    <div id="flash-overlay" class="overlay flash"></div>
+    <div id="static-overlay" class="overlay static"></div>
+
+    <!-- Heartbeat visualizer — subtle at the edges -->
+    <div id="heartbeat-border" class="heartbeat-border"></div>
+
+    <!-- Minimal HUD (only shows if toggled) -->
+    <div id="hud" class="hud hidden">
+      <div class="hud-item">
+        <span class="hud-label">BPM</span>
+        <span id="hud-bpm" class="hud-value">--</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">BREATH</span>
+        <span id="hud-breath" class="hud-value">--</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">FEAR</span>
+        <span id="hud-fear" class="hud-value fear-meter">
+          <span id="fear-fill" class="fear-fill"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Narrative text overlay -->
+    <div id="narrative-text" class="narrative"></div>
+
+    <!-- Hidden small webcam preview (for face tracking) -->
+    <video id="webcam-hidden" class="webcam-hidden" autoplay playsinline muted></video>
+  </div>
+
+  <!-- ========== END SCREEN ========== -->
+  <div id="end-screen" class="screen">
+    <div class="end-container">
+      <h1 class="glitch-text" data-text="SURVIVED">SURVIVED</h1>
+      <div id="fear-report" class="fear-report">
+        <!-- Filled dynamically with fear profile data -->
+      </div>
+      <button id="restart-btn" class="pulse-btn">FACE IT AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="engine/biometrics.js"></script>
+  <script src="engine/fear-engine.js"></script>
+  <script src="engine/horror-renderer.js"></script>
+  <script src="audio/audio-engine.js"></script>
+  <script src="scenes/scene-manager.js"></script>
+  <script src="ui/hud.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

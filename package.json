@@ -1,0 +1,28 @@
+{
+  "name": "pulse-biometric-horror",
+  "version": "1.0.0",
+  "description": "Pulse — A biometric horror experience that reads your fear in real-time using the Presage SmartSpectra SDK",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": [
+    "smartspectra",
+    "presage",
+    "biometric",
+    "horror",
+    "webcam",
+    "pulse",
+    "hrv",
+    "breathing"
+  ],
+  "author": "Ritam Debnath",
+  "license": "MIT",
+  "dependencies": {
+    "@smartspectra/node-sdk": "latest"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
