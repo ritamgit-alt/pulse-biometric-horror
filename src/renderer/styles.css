@@ -16,7 +16,7 @@ html, body {
   background: #000;
   color: #c8c8c8;
   font-family: 'Courier New', Courier, monospace;
-  cursor: none;
+  cursor: default;
 }
 
 /* ---------- Screens ---------- */
@@ -426,15 +426,7 @@ html, body {
   font-weight: bold;
 }
 
-/* ---------- Custom cursor ---------- */
-body::after {
-  content: '';
-  position: fixed;
-  width: 12px;
-  height: 12px;
-  border: 1px solid rgba(255, 26, 26, 0.6);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 9999;
-  transform: translate(-50%, -50%);
+/* ---------- Horror Screen Cursor ---------- */
+#horror-screen {
+  cursor: crosshair;
 }
