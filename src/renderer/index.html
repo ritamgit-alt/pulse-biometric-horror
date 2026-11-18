@@ -98,8 +98,27 @@
     <!-- Narrative text overlay -->
     <div id="narrative-text" class="narrative"></div>
 
-    <!-- Hidden small webcam preview (for face tracking) -->
-    <video id="webcam-hidden" class="webcam-hidden" autoplay playsinline muted></video>
+    <!-- Night-vision Biometric Facecam (Press 'C' to toggle) -->
+    <div id="biometric-cam" class="biometric-cam">
+      <div class="cam-header">
+        <span class="rec-dot"></span>
+        <span class="cam-title">SMARTSPECTRA LIVE BIO-FEED</span>
+        <span id="cam-fps" class="cam-fps">30 FPS</span>
+      </div>
+      <div class="cam-viewport">
+        <video id="webcam-hidden" class="webcam-video" autoplay playsinline muted></video>
+        <div class="cam-grid"></div>
+        <div class="cam-scanline"></div>
+        <div class="bracket tl"></div>
+        <div class="bracket tr"></div>
+        <div class="bracket bl"></div>
+        <div class="bracket br"></div>
+        <div class="face-tracking-box">
+          <span class="tracking-label">TARGET LOCKED</span>
+        </div>
+      </div>
+      <canvas id="pulse-wave-canvas" class="pulse-wave-canvas" width="220" height="45"></canvas>
+    </div>
   </div>
 
   <!-- ========== END SCREEN ========== -->

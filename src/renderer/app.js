@@ -199,6 +199,9 @@
       if (e.key === 'h' || e.key === 'H') {
         hud.toggle();
       }
+      if (e.key === 'c' || e.key === 'C') {
+        hud.toggleCam();
+      }
       if (e.key === 'Escape') {
         endExperience();
       }
