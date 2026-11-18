@@ -33,7 +33,7 @@ PULSE is a cinematic horror experience where **the game can hear your heartbeat*
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/pulse-biometric-horror.git
+git clone https://github.com/ritamgit-alt/pulse-biometric-horror.git
 cd pulse-biometric-horror
 
 # Install dependencies
@@ -49,8 +49,10 @@ npm start
 
 ### Controls
 - **F11** — Toggle fullscreen
-- **H** — Toggle HUD (shows real-time biometrics)
-- **ESC** — Exit the experience
+- **H** — Toggle HUD (shows real-time BPM, breathing rate, fear meter, sensor mode)
+- **C** — Toggle Night-Vision Biometric Facecam & live sweeping PPG cardiac waveform
+- **Space** — Trigger fright test (simulates heart spike & initiates monster sprint)
+- **ESC** — Exit experience & view your final **Fear Profile** report
 
 ## 🏗️ Architecture
 
