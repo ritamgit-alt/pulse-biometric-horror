@@ -8,6 +8,7 @@ class HUD {
     this.bpmEl = document.getElementById('hud-bpm');
     this.breathEl = document.getElementById('hud-breath');
     this.fearFill = document.getElementById('fear-fill');
+    this.sourceEl = document.getElementById('hud-source');
     this.visible = false;
   }
 
@@ -34,6 +35,10 @@ class HUD {
     }
     if (this.fearFill && data.stress !== undefined) {
       this.fearFill.style.width = `${Math.round(data.stress * 100)}%`;
+    }
+    if (this.sourceEl && data.isSimulated !== undefined) {
+      this.sourceEl.textContent = data.isSimulated ? 'SIM' : 'SMARTSPECTRA';
+      this.sourceEl.style.color = data.isSimulated ? '#ffaa33' : '#00ff88';
     }
   }
 }

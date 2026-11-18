@@ -1,45 +1,55 @@
 /**
- * horror-renderer.js — Visual Rendering Engine
+ * horror-renderer.js — Atmospheric 2.5D Canvas Horror Renderer
  *
- * Renders the horror scene on canvas and controls all visual effects
- * including shadows, entities, particles, screen distortion, and more.
+ * Renders an immersive, terrifying perspective corridor with dynamic flashlight,
+ * volumetric fog, drifting particles, shadows, glowing eyes, and screen-distorting
+ * biometric scare events.
  */
 
 class HorrorRenderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.width = 0;
-    this.height = 0;
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
     this.animFrame = null;
     this.isRunning = false;
 
-    // Visual state
-    this.ambientLight = 0.03; // Very dark baseline
-    this.flickerAmount = 0;
+    // Camera & Flashlight
+    this.mouseX = this.width / 2;
+    this.mouseY = this.height / 2;
+    this.camX = 0;
+    this.camY = 0;
+    this.flashlightFlicker = 1.0;
+    this.time = 0;
+
+    // Environmental state
+    this.ambientLight = 0.12;
+    this.colorShift = 0; // 0 = cool grey/blue, 1 = intense crimson
     this.shakeX = 0;
     this.shakeY = 0;
-    this.colorShift = 0; // 0=blueish, 1=reddish
-    this.entityOpacity = 0;
-    this.entityX = 0.5;
-    this.entityY = 0.5;
-    this.entityScale = 0;
+    this.fogDensity = 0.4;
+    this.heartbeatScale = 0;
 
-    // Particle system for dust/fog
+    // Entity & Jumpscare
+    this.entityActive = false;
+    this.entityDepth = 0.9; // 0 = close, 1 = distant end of hall
+    this.entityAlpha = 0;
+    this.entityType = 'shadow';
+    this.jumpscareAlpha = 0;
+
+    // Atmospheric objects
     this.particles = [];
-    this.maxParticles = 80;
-
-    // Eyes in the dark
+    this.maxParticles = 120;
     this.eyes = [];
-
-    // Active effects queue
-    this.activeEffects = [];
-
-    // Corridor depth layers for parallax illusion
-    this.corridorLayers = [];
+    this.whisperRuns = [];
 
     this._resize();
     window.addEventListener('resize', () => this._resize());
+    window.addEventListener('mousemove', (e) => {
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
+    });
   }
 
   _resize() {
@@ -47,13 +57,9 @@ class HorrorRenderer {
     this.height = this.canvas.height = window.innerHeight;
   }
 
-  /**
-   * Start the render loop
-   */
   start() {
     this.isRunning = true;
     this._initParticles();
-    this._initCorridor();
     this._loop();
   }
 
@@ -64,390 +70,406 @@ class HorrorRenderer {
     }
   }
 
-  /**
-   * Process events from the Fear Engine
-   */
   processEvents(events) {
+    if (!events) return;
     for (const event of events) {
       switch (event.type) {
         case 'atmosphere':
           this._updateAtmosphere(event.data);
           break;
-
         case 'flicker':
-          this._triggerFlicker(event.intensity);
+          this._triggerFlicker(event.intensity || 0.6);
           break;
-
         case 'shadow_move':
-          this._triggerShadow(event.intensity);
+          this._triggerShadow(event.intensity || 0.7);
           break;
-
         case 'static_burst':
-          this._triggerStatic(event.intensity);
+          this._triggerStatic(event.intensity || 0.5);
           break;
-
         case 'face_flash':
-          this._triggerFaceFlash(event.intensity);
+          this._triggerFaceFlash(event.intensity || 0.9);
           break;
-
         case 'screen_shake':
-          this._triggerShake(event.intensity);
+          this._triggerShake(event.intensity || 0.6);
           break;
-
         case 'darkness':
-          this._triggerDarkness(event.intensity);
+          this._triggerDarkness(event.intensity || 0.8);
           break;
-
         case 'eyes_in_dark':
-          this._triggerEyes(event.intensity);
+          this._triggerEyes(event.intensity || 0.7);
           break;
-
-        case 'text_glitch':
-          this._triggerTextGlitch();
-          break;
-
-        case 'breathing_fog':
-          // Handled in atmosphere
-          break;
-
         case 'heartbeat_tick':
           this._pulseHeartbeat(event.data);
           break;
-
         case 'spike_detected':
-          this._onSpike();
+          this._triggerShake(1.2);
+          this._triggerFlicker(1.0);
           break;
       }
     }
   }
 
-  // ---- Render Loop ----
+  // ---- Main Render Loop ----
 
   _loop() {
     if (!this.isRunning) return;
+    this.time += 0.016;
+
+    // Smooth flashlight camera tracking with slight breathing bob
+    const targetCamX = (this.mouseX - this.width / 2) * 0.15;
+    const targetCamY = (this.mouseY - this.height / 2) * 0.15 + Math.sin(this.time * 2) * 3;
+    this.camX += (targetCamX - this.camX) * 0.08;
+    this.camY += (targetCamY - this.camY) * 0.08;
 
     this.ctx.save();
 
-    // Apply screen shake
+    // Screen shake
     this.ctx.translate(this.shakeX, this.shakeY);
-    this.shakeX *= 0.9;
-    this.shakeY *= 0.9;
+    this.shakeX *= 0.88;
+    this.shakeY *= 0.88;
 
-    // Clear to near-black
-    const r = Math.floor(2 + this.colorShift * 10);
-    const g = Math.floor(2);
-    const b = Math.floor(5 - this.colorShift * 3);
+    // 1. Dark Void Base
+    const r = Math.floor(6 + this.colorShift * 18);
+    const g = Math.floor(4);
+    const b = Math.floor(8 - this.colorShift * 4);
     this.ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    this.ctx.fillRect(-10, -10, this.width + 20, this.height + 20);
+    this.ctx.fillRect(-20, -20, this.width + 40, this.height + 40);
 
-    // Draw scene layers
-    this._drawCorridor();
+    // 2. Render 3D Perspective Hallway
+    this._drawHallway();
+
+    // 3. Entity & Shadows
+    this._drawEntity();
+
+    // 4. Floating Atmospheric Dust & Fog
     this._drawParticles();
     this._drawEyes();
-    this._drawEntity();
-    this._drawFlicker();
-    this._processActiveEffects();
+
+    // 5. Flashlight Cone Lighting Overlay
+    this._drawFlashlightLighting();
+
+    // 6. Dynamic Biometric Heartbeat Pulse Border
+    this._drawHeartbeatPulse();
+
+    // 7. Jumpscare Flash Overlay
+    if (this.jumpscareAlpha > 0) {
+      this._drawJumpscare();
+      this.jumpscareAlpha *= 0.92;
+    }
 
     this.ctx.restore();
 
     this.animFrame = requestAnimationFrame(() => this._loop());
   }
 
-  // ---- Scene Elements ----
+  // ---- Scene Rendering ----
 
-  _initCorridor() {
-    // Create a vanishing-point corridor illusion
-    this.corridorLayers = [];
-    for (let i = 0; i < 8; i++) {
-      this.corridorLayers.push({
-        depth: i / 8,
-        offset: 0,
-        wallAlpha: 0.03 + i * 0.01,
-      });
+  _drawHallway() {
+    const cx = this.width / 2 + this.camX;
+    const cy = this.height / 2 + this.camY;
+
+    // Vanishing point at the end of the hall
+    const depthSteps = 10;
+    const endW = this.width * 0.12;
+    const endH = this.height * 0.18;
+    const endX = cx - endW / 2;
+    const endY = cy - endH / 2;
+
+    // Draw End Wall (The dark doorway at the end)
+    this.ctx.fillStyle = `rgb(${10 + this.colorShift * 15}, 6, 8)`;
+    this.ctx.fillRect(endX, endY, endW, endH);
+
+    // Doorway frame at the end
+    this.ctx.strokeStyle = `rgba(${120 + this.colorShift * 80}, 30, 35, 0.4)`;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(endX, endY, endW, endH);
+
+    // Draw Perspective Lines: Ceiling, Floor, Wall edges
+    const corners = [
+      [0, 0, endX, endY], // top-left
+      [this.width, 0, endX + endW, endY], // top-right
+      [this.width, this.height, endX + endW, endY + endH], // bottom-right
+      [0, this.height, endX, endY + endH], // bottom-left
+    ];
+
+    this.ctx.strokeStyle = `rgba(${70 + this.colorShift * 60}, 40, 45, 0.35)`;
+    this.ctx.lineWidth = 2;
+    for (const [x1, y1, x2, y2] of corners) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x1, y1);
+      this.ctx.lineTo(x2, y2);
+      this.ctx.stroke();
     }
-  }
 
-  _drawCorridor() {
-    const cx = this.width / 2;
-    const cy = this.height / 2;
-
-    for (const layer of this.corridorLayers) {
-      const scale = 1 - layer.depth * 0.8;
-      const w = this.width * scale;
-      const h = this.height * scale;
+    // Floorboards & Wall Ribs along the depth
+    for (let i = 1; i <= depthSteps; i++) {
+      const t = i / depthSteps;
+      const w = this.width + (endW - this.width) * t;
+      const h = this.height + (endH - this.height) * t;
       const x = cx - w / 2;
       const y = cy - h / 2;
 
-      // Dark walls
-      this.ctx.strokeStyle = `rgba(${40 + this.colorShift * 30}, 10, 15, ${layer.wallAlpha})`;
-      this.ctx.lineWidth = 1;
+      const alpha = (1 - t * 0.7) * 0.3;
+      this.ctx.strokeStyle = `rgba(${80 + this.colorShift * 70}, 45, 50, ${alpha})`;
+      this.ctx.lineWidth = 1.5;
       this.ctx.strokeRect(x, y, w, h);
 
-      // Faint light at the end of the corridor
-      if (layer.depth > 0.6) {
-        const gradient = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, 100);
-        gradient.addColorStop(0, `rgba(60, 20, 20, ${this.ambientLight * 2})`);
-        gradient.addColorStop(1, 'transparent');
-        this.ctx.fillStyle = gradient;
-        this.ctx.fillRect(cx - 100, cy - 100, 200, 200);
+      // Floor plank lines
+      const floorY = y + h;
+      this.ctx.beginPath();
+      this.ctx.moveTo(x + w * 0.35, floorY);
+      this.ctx.lineTo(cx - endW * 0.15, endY + endH);
+      this.ctx.moveTo(x + w * 0.65, floorY);
+      this.ctx.lineTo(cx + endW * 0.15, endY + endH);
+      this.ctx.stroke();
+
+      // Side doors along the hallway
+      if (i % 2 === 0 && t < 0.8) {
+        // Left door
+        const doorTop = y + h * 0.2;
+        const doorBottom = y + h;
+        this.ctx.fillStyle = `rgba(0, 0, 0, 0.4)`;
+        this.ctx.fillRect(x - 15, doorTop, 15, doorBottom - doorTop);
+        this.ctx.strokeStyle = `rgba(${90 + this.colorShift * 50}, 30, 30, 0.3)`;
+        this.ctx.strokeRect(x - 15, doorTop, 15, doorBottom - doorTop);
       }
     }
+
+    // Distant ominous glow down the hallway
+    const glow = this.ctx.createRadialGradient(cx, cy, 5, cx, cy, endW * 1.5);
+    glow.addColorStop(0, `rgba(${160 + this.colorShift * 80}, 20, 20, ${0.15 + this.colorShift * 0.25})`);
+    glow.addColorStop(1, 'transparent');
+    this.ctx.fillStyle = glow;
+    this.ctx.fillRect(cx - endW * 1.5, cy - endH * 1.5, endW * 3, endH * 3);
+  }
+
+  _drawFlashlightLighting() {
+    const fx = this.mouseX;
+    const fy = this.mouseY;
+    const radius = Math.max(this.width, this.height) * 0.55;
+
+    // Flashlight flicker modifier
+    const flicker = Math.min(1.0, this.flashlightFlicker + (Math.random() - 0.5) * 0.05);
+
+    // Vignette / Shadow mask with cutout for flashlight
+    const lightGrad = this.ctx.createRadialGradient(fx, fy, 40, fx, fy, radius);
+    lightGrad.addColorStop(0, `rgba(255, 235, 200, ${0.08 * flicker})`);
+    lightGrad.addColorStop(0.3, `rgba(200, 180, 160, ${0.04 * flicker})`);
+    lightGrad.addColorStop(0.7, `rgba(0, 0, 0, ${0.65})`);
+    lightGrad.addColorStop(1.0, `rgba(0, 0, 0, ${0.94})`);
+
+    this.ctx.fillStyle = lightGrad;
+    this.ctx.fillRect(0, 0, this.width, this.height);
   }
 
   _initParticles() {
     this.particles = [];
     for (let i = 0; i < this.maxParticles; i++) {
-      this.particles.push(this._createParticle());
+      this.particles.push({
+        x: Math.random() * this.width,
+        y: Math.random() * this.height,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -0.15 - Math.random() * 0.35,
+        size: 1 + Math.random() * 2.5,
+        alpha: 0.1 + Math.random() * 0.3,
+      });
     }
-  }
-
-  _createParticle() {
-    return {
-      x: Math.random() * this.width,
-      y: Math.random() * this.height,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: -0.1 - Math.random() * 0.3,
-      size: 1 + Math.random() * 2,
-      alpha: 0.02 + Math.random() * 0.06,
-      life: Math.random(),
-    };
   }
 
   _drawParticles() {
     for (const p of this.particles) {
       p.x += p.vx;
       p.y += p.vy;
-      p.life -= 0.001;
 
-      if (p.life <= 0 || p.y < -10 || p.x < -10 || p.x > this.width + 10) {
-        Object.assign(p, this._createParticle());
+      if (p.y < -10 || p.x < -10 || p.x > this.width + 10) {
+        p.x = Math.random() * this.width;
         p.y = this.height + 10;
       }
 
       this.ctx.beginPath();
       this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      this.ctx.fillStyle = `rgba(${100 + this.colorShift * 100}, 60, 60, ${p.alpha})`;
+      this.ctx.fillStyle = `rgba(${160 + this.colorShift * 80}, ${140 - this.colorShift * 60}, 140, ${p.alpha})`;
       this.ctx.fill();
     }
+  }
+
+  _drawEntity() {
+    if (this.entityAlpha <= 0.01) return;
+
+    const cx = this.width / 2 + this.camX;
+    const cy = this.height / 2 + this.camY;
+
+    // Scale and position based on depth
+    const scale = (1 - this.entityDepth * 0.7);
+    const w = 120 * scale;
+    const h = 260 * scale;
+    const x = cx - w / 2;
+    const y = cy + (this.height * 0.05) - h / 2;
+
+    this.ctx.save();
+    this.ctx.globalAlpha = Math.min(1.0, this.entityAlpha);
+
+    // Dark shadowy humanoid silhouette
+    this.ctx.fillStyle = '#050203';
+    this.ctx.beginPath();
+    // Head
+    this.ctx.arc(cx, y + h * 0.15, w * 0.22, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Shoulders and torso
+    this.ctx.beginPath();
+    this.ctx.moveTo(cx - w * 0.4, y + h * 0.35);
+    this.ctx.lineTo(cx + w * 0.4, y + h * 0.35);
+    this.ctx.lineTo(cx + w * 0.25, y + h);
+    this.ctx.lineTo(cx - w * 0.25, y + h);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Red glowing eye slit
+    this.ctx.fillStyle = `rgba(255, 30, 30, ${this.entityAlpha * 0.9})`;
+    this.ctx.beginPath();
+    this.ctx.arc(cx - w * 0.08, y + h * 0.15, 3 * scale, 0, Math.PI * 2);
+    this.ctx.arc(cx + w * 0.08, y + h * 0.15, 3 * scale, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.restore();
+
+    // Fade slowly over time
+    this.entityAlpha *= 0.985;
   }
 
   _drawEyes() {
     for (let i = this.eyes.length - 1; i >= 0; i--) {
       const eye = this.eyes[i];
-      eye.alpha -= 0.003;
+      eye.alpha -= 0.005;
 
       if (eye.alpha <= 0) {
         this.eyes.splice(i, 1);
         continue;
       }
 
-      // Two red dots
-      const eyeSpacing = 12 * eye.scale;
-      this.ctx.fillStyle = `rgba(200, 30, 30, ${eye.alpha})`;
+      const spacing = 16 * eye.scale;
+      this.ctx.fillStyle = `rgba(255, 40, 40, ${eye.alpha})`;
 
       this.ctx.beginPath();
-      this.ctx.arc(eye.x - eyeSpacing, eye.y, 3 * eye.scale, 0, Math.PI * 2);
+      this.ctx.ellipse(eye.x - spacing, eye.y, 4 * eye.scale, 2.5 * eye.scale, 0, 0, Math.PI * 2);
+      this.ctx.ellipse(eye.x + spacing, eye.y, 4 * eye.scale, 2.5 * eye.scale, 0, 0, Math.PI * 2);
       this.ctx.fill();
 
-      this.ctx.beginPath();
-      this.ctx.arc(eye.x + eyeSpacing, eye.y, 3 * eye.scale, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      // Faint glow
-      const glow = this.ctx.createRadialGradient(eye.x, eye.y, 0, eye.x, eye.y, 40 * eye.scale);
-      glow.addColorStop(0, `rgba(150, 0, 0, ${eye.alpha * 0.1})`);
+      // Eye glow
+      const glow = this.ctx.createRadialGradient(eye.x, eye.y, 2, eye.x, eye.y, 40 * eye.scale);
+      glow.addColorStop(0, `rgba(255, 0, 0, ${eye.alpha * 0.2})`);
       glow.addColorStop(1, 'transparent');
       this.ctx.fillStyle = glow;
       this.ctx.fillRect(eye.x - 50, eye.y - 50, 100, 100);
     }
   }
 
-  _drawEntity() {
-    if (this.entityOpacity <= 0) return;
+  _drawHeartbeatPulse() {
+    if (this.heartbeatScale <= 0.01) return;
 
-    const cx = this.width * this.entityX;
-    const cy = this.height * this.entityY;
-    const size = 150 * this.entityScale;
+    // Red pulsating vignette border
+    const pulseGrad = this.ctx.createRadialGradient(
+      this.width / 2, this.height / 2, this.width * 0.35,
+      this.width / 2, this.height / 2, this.width * 0.65
+    );
+    pulseGrad.addColorStop(0, 'transparent');
+    pulseGrad.addColorStop(1, `rgba(220, 15, 15, ${this.heartbeatScale * 0.45})`);
 
-    // Dark silhouette with red glow
-    const gradient = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, size);
-    gradient.addColorStop(0, `rgba(0, 0, 0, ${this.entityOpacity})`);
-    gradient.addColorStop(0.5, `rgba(20, 0, 0, ${this.entityOpacity * 0.5})`);
-    gradient.addColorStop(1, 'transparent');
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(cx - size, cy - size, size * 2, size * 2);
+    this.ctx.fillStyle = pulseGrad;
+    this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Fade entity
-    this.entityOpacity *= 0.995;
+    this.heartbeatScale *= 0.88; // Quick decay like a heartbeat
   }
 
-  _drawFlicker() {
-    if (this.flickerAmount > 0) {
-      this.ctx.fillStyle = `rgba(255, 240, 220, ${this.flickerAmount})`;
-      this.ctx.fillRect(0, 0, this.width, this.height);
-      this.flickerAmount *= 0.85;
-    }
+  _drawJumpscare() {
+    // White/red screen flashes with distorted demonic face impression
+    this.ctx.fillStyle = `rgba(240, 20, 20, ${this.jumpscareAlpha * 0.4})`;
+    this.ctx.fillRect(0, 0, this.width, this.height);
+
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+
+    this.ctx.strokeStyle = `rgba(255, 255, 255, ${this.jumpscareAlpha * 0.8})`;
+    this.ctx.lineWidth = 4;
+    // Screaming open mouth
+    this.ctx.beginPath();
+    this.ctx.ellipse(cx, cy + 50, 60, 110, 0, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    // Huge hollow eyes
+    this.ctx.beginPath();
+    this.ctx.arc(cx - 70, cy - 60, 35, 0, Math.PI * 2);
+    this.ctx.arc(cx + 70, cy - 60, 35, 0, Math.PI * 2);
+    this.ctx.stroke();
   }
 
-  _processActiveEffects() {
-    const now = Date.now();
-    this.activeEffects = this.activeEffects.filter((e) => {
-      if (now > e.endTime) return false;
-      e.render(this.ctx, this.width, this.height, (now - e.startTime) / (e.endTime - e.startTime));
-      return true;
-    });
-  }
-
-  // ---- Effect Triggers ----
+  // ---- Triggers ----
 
   _updateAtmosphere(data) {
-    this.colorShift = this.colorShift * 0.95 + data.colorShift * 0.05;
-    this.ambientLight = 0.02 + data.vignetteIntensity * 0.03;
+    if (!data) return;
+    this.colorShift = this.colorShift * 0.9 + (data.colorShift || 0) * 0.1;
+  }
 
-    // Update CSS overlays
-    const vignette = document.getElementById('vignette-overlay');
-    if (vignette) vignette.style.opacity = 0.6 + data.vignetteIntensity * 0.35;
-
-    const fog = document.getElementById('fog-overlay');
-    if (fog) fog.style.opacity = data.fogDensity * 0.6;
-
-    // Screen shake from biometrics
-    this.shakeX += (Math.random() - 0.5) * data.shakeAmount;
-    this.shakeY += (Math.random() - 0.5) * data.shakeAmount;
+  _pulseHeartbeat(data) {
+    this.heartbeatScale = 1.0;
   }
 
   _triggerFlicker(intensity) {
-    // Rapid light flicker
-    let count = 0;
-    const flicker = setInterval(() => {
-      this.flickerAmount = intensity * 0.15 * (Math.random() > 0.5 ? 1 : 0);
-      count++;
-      if (count > 6 + Math.random() * 8) {
-        clearInterval(flicker);
-        this.flickerAmount = 0;
+    let flips = 0;
+    const interval = setInterval(() => {
+      this.flashlightFlicker = Math.random() > 0.5 ? 0.05 : 1.0;
+      flips++;
+      if (flips > 8) {
+        clearInterval(interval);
+        this.flashlightFlicker = 1.0;
       }
-    }, 50 + Math.random() * 100);
+    }, 60);
   }
 
   _triggerShadow(intensity) {
-    // Dark shadow slides across the scene
-    const startX = Math.random() > 0.5 ? -0.2 : 1.2;
-    const endX = startX < 0 ? 0.6 : 0.4;
-
-    this.entityOpacity = intensity * 0.6;
-    this.entityScale = 0.8 + intensity * 0.5;
-    this.entityX = startX;
-    this.entityY = 0.3 + Math.random() * 0.4;
-
-    const duration = 2000 + Math.random() * 2000;
-    const start = Date.now();
-
-    const animate = () => {
-      const t = (Date.now() - start) / duration;
-      if (t > 1) return;
-      this.entityX = startX + (endX - startX) * t;
-      requestAnimationFrame(animate);
-    };
-    animate();
+    this.entityActive = true;
+    this.entityDepth = 0.8 - Math.random() * 0.3;
+    this.entityAlpha = Math.min(1.0, intensity);
   }
 
   _triggerStatic(intensity) {
     const overlay = document.getElementById('static-overlay');
     if (overlay) {
-      overlay.style.opacity = intensity * 0.3;
-      setTimeout(() => { overlay.style.opacity = 0; }, 300 + Math.random() * 500);
+      overlay.style.opacity = intensity * 0.4;
+      setTimeout(() => { overlay.style.opacity = 0; }, 250);
     }
   }
 
   _triggerFaceFlash(intensity) {
-    // Brief white flash then lingering dark face impression
+    this.jumpscareAlpha = intensity;
+    this._triggerShake(1.4);
     const flash = document.getElementById('flash-overlay');
     if (flash) {
-      flash.style.opacity = intensity * 0.8;
-      setTimeout(() => { flash.style.opacity = 0; }, 60);
+      flash.style.opacity = 0.9;
+      setTimeout(() => { flash.style.opacity = 0; }, 80);
     }
-
-    // Show entity as a "face"
-    this.entityOpacity = intensity * 0.9;
-    this.entityScale = 1.5;
-    this.entityX = 0.5 + (Math.random() - 0.5) * 0.2;
-    this.entityY = 0.5 + (Math.random() - 0.5) * 0.2;
   }
 
   _triggerShake(intensity) {
-    this.shakeX = (Math.random() - 0.5) * intensity * 20;
-    this.shakeY = (Math.random() - 0.5) * intensity * 20;
+    this.shakeX = (Math.random() - 0.5) * intensity * 24;
+    this.shakeY = (Math.random() - 0.5) * intensity * 24;
   }
 
   _triggerDarkness(intensity) {
-    // Vignette closes in, nearly total darkness
-    const vignette = document.getElementById('vignette-overlay');
-    if (vignette) {
-      vignette.style.background =
-        'radial-gradient(ellipse at center, transparent 10%, rgba(0,0,0,0.98) 60%)';
-      setTimeout(() => {
-        vignette.style.background =
-          'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.9) 100%)';
-      }, 3000 + intensity * 3000);
-    }
+    this.flashlightFlicker = 0.05;
+    setTimeout(() => { this.flashlightFlicker = 1.0; }, 1800 * intensity);
   }
 
   _triggerEyes(intensity) {
-    // Pairs of red eyes appear in the dark corners
-    const count = 1 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < count; i++) {
-      this.eyes.push({
-        x: Math.random() * this.width,
-        y: 50 + Math.random() * (this.height - 100),
-        alpha: intensity * 0.6,
-        scale: 0.5 + Math.random() * 1,
-      });
-    }
-  }
-
-  _triggerTextGlitch() {
-    const narrative = document.getElementById('narrative-text');
-    if (narrative) {
-      const original = narrative.textContent;
-      const glitchChars = '█▓▒░╠╬╣╚╝¥§Ω';
-      let count = 0;
-      const glitch = setInterval(() => {
-        narrative.textContent = original
-          .split('')
-          .map((c) =>
-            Math.random() < 0.3 ? glitchChars[Math.floor(Math.random() * glitchChars.length)] : c
-          )
-          .join('');
-        count++;
-        if (count > 8) {
-          clearInterval(glitch);
-          narrative.textContent = original;
-        }
-      }, 80);
-    }
-  }
-
-  _pulseHeartbeat(data) {
-    // Pulse the border with the user's actual heartbeat
-    const border = document.getElementById('heartbeat-border');
-    if (!border) return;
-
-    // Calculate timing from BPM
-    const interval = data.interval || 800;
-
-    if (!this._heartbeatTimer) {
-      this._heartbeatTimer = setInterval(() => {
-        border.classList.add('beat');
-        setTimeout(() => border.classList.remove('beat'), 150);
-      }, interval);
-    }
-  }
-
-  _onSpike() {
-    // User had a fear spike — the game notices
-    this._triggerFlicker(0.6);
-    this.shakeX = (Math.random() - 0.5) * 10;
-    this.shakeY = (Math.random() - 0.5) * 10;
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    this.eyes.push({
+      x: cx + (Math.random() - 0.5) * this.width * 0.6,
+      y: cy + (Math.random() - 0.5) * this.height * 0.4,
+      scale: 0.8 + Math.random() * 0.8,
+      alpha: intensity,
+    });
   }
 }
 

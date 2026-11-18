@@ -2,8 +2,7 @@
  * app.js — Main Application Controller for PULSE
  *
  * Orchestrates the consent → calibration → horror → end screen flow,
- * connecting the BiometricsManager, FearEngine, HorrorRenderer,
- * AudioEngine, SceneManager, and HUD.
+ * running a continuous high-reliability game loop tied to biometrics.
  */
 
 (function () {
@@ -20,7 +19,15 @@
   // ---- State ----
   let gameLoop = null;
   let calibrationTimer = null;
-  const CALIBRATION_DURATION = 15000; // 15 seconds to establish baseline
+  const CALIBRATION_DURATION = 12000; // 12 seconds to establish baseline
+
+  let latestBiometrics = {
+    pulseRate: 72,
+    breathingRate: 14,
+    hrv: 45,
+    stress: 0,
+    spike: false,
+  };
 
   // ---- Screen Management ----
   function showScreen(id) {
@@ -62,7 +69,6 @@
       apiKey: envApiKey || window.__SMARTSPECTRA_API_KEY || '',
     });
 
-    // Start capturing data
     await biometrics.start();
 
     // Update quality indicator
@@ -71,18 +77,19 @@
       const text = document.getElementById('quality-text');
       if (quality === 'good' || quality === 'excellent') {
         indicator.classList.add('good');
-        text.textContent = 'Signal locked';
+        text.textContent = 'Signal locked (face detected)';
       } else {
         indicator.classList.remove('good');
-        text.textContent = quality || 'Adjusting...';
+        text.textContent = quality || 'Searching for face...';
       }
     });
 
     // Update calibration metrics display
     biometrics.onMetrics((data) => {
+      latestBiometrics = data;
       const status = document.getElementById('calibration-status');
-      if (data.pulseRate > 0) {
-        status.textContent = `Pulse: ${Math.round(data.pulseRate)} BPM | Breathing: ${Math.round(data.breathingRate)}/min`;
+      if (status && data.pulseRate > 0) {
+        status.textContent = `Pulse: ${Math.round(data.pulseRate)} BPM | Breathing: ${Math.round(data.breathingRate)}/min | Mode: ${data.isSimulated ? 'Simulation' : 'SmartSpectra Live'}`;
       }
     });
 
@@ -107,49 +114,46 @@
   async function startHorror() {
     showScreen('horror-screen');
 
-    // Switch camera feed to hidden video element
+    // Switch camera feed to hidden element
     const hiddenVideo = document.getElementById('webcam-hidden');
-    if (biometrics.stream) {
+    if (biometrics.stream && hiddenVideo) {
       hiddenVideo.srcObject = biometrics.stream;
-      await hiddenVideo.play();
+      await hiddenVideo.play().catch(() => {});
     }
 
-    // Initialize audio (needs user gesture — we have it from calibration click)
+    // Initialize audio & start renderer
     await audio.init();
-
-    // Start the renderer
     renderer.start();
-
-    // Start the fear engine
     fearEngine.start();
 
-    // Wire up fear engine events
+    // Storytelling narrative display
     fearEngine.on('narrative', (text) => {
-      sceneManager.showNarrative(text, 4000);
+      sceneManager.showNarrative(text, 5000);
     });
 
-    fearEngine.on('phase_change', (phase) => {
-      console.log('[App] Phase change:', phase);
-    });
+    // Show initial narrative immediately
+    sceneManager.showNarrative("You shouldn't have come here.", 4500);
 
-    // Show HUD (optional — press H to toggle)
+    // Show HUD by default so players can see their vitals live
     hud.show();
 
-    // Wire up biometrics to game loop
+    // Listen for biometric updates
     biometrics.onMetrics((data) => {
-      // Update HUD
+      latestBiometrics = data;
       hud.update(data);
+    });
 
-      // Feed into fear engine
-      const events = fearEngine.update(data);
+    // Continuous 10Hz game loop (independent of camera frame rate)
+    gameLoop = setInterval(() => {
+      const events = fearEngine.update(latestBiometrics);
 
-      // Process visual events
+      // Pass events to visuals
       renderer.processEvents(events);
 
-      // Process audio events
+      // Pass events to audio
       for (const event of events) {
         if (event.type === 'atmosphere') {
-          audio.update(fearEngine.fearLevel, data);
+          audio.update(fearEngine.fearLevel, latestBiometrics);
         } else if (event.type === 'experience_end') {
           endExperience();
         } else if (
@@ -157,11 +161,10 @@
           event.type !== 'spike_detected' &&
           event.type !== 'atmosphere'
         ) {
-          // It's a scare event
-          audio.triggerScare(event.type, event.intensity || 0.5);
+          audio.triggerScare(event.type, event.intensity || 0.6);
         }
       }
-    });
+    }, 100);
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
@@ -171,30 +174,32 @@
       if (e.key === 'Escape') {
         endExperience();
       }
-      if (e.key === 'F11') {
-        // Handled in main process
+      // Spacebar to trigger a test fright spike
+      if (e.code === 'Space') {
+        biometrics.simulateScare(0.8);
       }
     });
   }
 
   // ========== PHASE 4: END SCREEN ==========
   function endExperience() {
-    // Stop everything
     if (gameLoop) {
       clearInterval(gameLoop);
       gameLoop = null;
     }
 
-    renderer.stop();
-    audio.stop();
+    if (renderer) renderer.stop();
+    if (audio) audio.stop();
 
-    // Generate fear report
     const stats = biometrics.sessionStats;
     const fearSummary = fearEngine.getSummary();
+    const restingPulse = Math.round(biometrics.baseline.pulseRate) || 72;
+    const peakPulse = Math.max(restingPulse, Math.round(stats.peakPulse || 0));
+    const spike = Math.max(0, peakPulse - restingPulse);
 
     const reportEl = document.getElementById('fear-report');
     if (reportEl) {
-      const duration = Math.round((Date.now() - stats.startTime) / 1000);
+      const duration = Math.round((Date.now() - (stats.startTime || Date.now())) / 1000);
       const minutes = Math.floor(duration / 60);
       const seconds = duration % 60;
 
@@ -206,15 +211,15 @@
         </div>
         <div class="fear-stat">
           <span class="fear-stat-label">Resting Pulse</span>
-          <span class="fear-stat-value">${Math.round(biometrics.baseline.pulseRate)} BPM</span>
+          <span class="fear-stat-value">${restingPulse} BPM</span>
         </div>
         <div class="fear-stat">
           <span class="fear-stat-label">Peak Pulse</span>
-          <span class="fear-stat-value">${Math.round(stats.peakPulse)} BPM</span>
+          <span class="fear-stat-value">${peakPulse} BPM</span>
         </div>
         <div class="fear-stat">
           <span class="fear-stat-label">Peak Pulse Spike</span>
-          <span class="fear-stat-value">+${Math.round(stats.peakPulse - biometrics.baseline.pulseRate)} BPM</span>
+          <span class="fear-stat-value">+${spike} BPM</span>
         </div>
         <div class="fear-stat">
           <span class="fear-stat-label">Fear Responsiveness</span>
@@ -227,12 +232,9 @@
       `;
     }
 
-    // Stop biometrics
-    biometrics.stop();
-
+    if (biometrics) biometrics.stop();
     showScreen('end-screen');
 
-    // Restart button
     const restartBtn = document.getElementById('restart-btn');
     if (restartBtn) {
       restartBtn.onclick = () => {
@@ -244,6 +246,6 @@
   // ========== INIT ==========
   window.addEventListener('DOMContentLoaded', () => {
     initConsent();
-    console.log('[PULSE] Ready. Enter the dark.');
+    console.log('[PULSE] System ready.');
   });
 })();

@@ -249,8 +249,8 @@ html, body {
 }
 
 .vignette {
-  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.9) 100%);
-  opacity: 0.8;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%);
+  opacity: 0.35;
   transition: opacity 0.5s ease;
 }
 
@@ -326,6 +326,14 @@ html, body {
   font-weight: bold;
 }
 
+.hud-source {
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: #888;
+  margin-top: 4px;
+}
+
 .fear-meter {
   width: 60px;
   height: 8px;
@@ -344,17 +352,21 @@ html, body {
 /* Narrative text */
 .narrative {
   position: absolute;
-  bottom: 80px;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 15;
-  color: rgba(200, 200, 200, 0.8);
-  font-size: 1.1rem;
+  z-index: 50;
+  color: #ff3333;
+  font-size: 1.6rem;
+  font-weight: bold;
+  letter-spacing: 0.15em;
   text-align: center;
-  max-width: 600px;
+  max-width: 750px;
   opacity: 0;
-  transition: opacity 1s ease;
-  text-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+  transition: opacity 0.8s ease;
+  text-shadow:
+    0 0 10px rgba(255, 30, 30, 0.8),
+    0 0 30px rgba(255, 0, 0, 0.5);
   pointer-events: none;
 }
 
