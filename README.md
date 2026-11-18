@@ -1,5 +1,10 @@
 # PULSE 🫀
 
+[![SmartSpectra SDK](https://img.shields.io/badge/SmartSpectra-SDK%20v3.5-ff1a1a)](https://smartspectra.presagetech.com/)
+[![Platform](https://img.shields.io/badge/Platform-Electron%20%7C%20macOS%20%7C%20Windows-blue)](https://www.electronjs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![DEV.to Challenge](https://img.shields.io/badge/DEV.to-SmartSpectra%20Challenge-black?logo=devdotto)](https://dev.to/devteam/join-the-presage-smartspectra-sdk-challenge-3000-in-prizes-across-10-winners-1370)
+
 **A biometric horror experience that reads your fear in real-time.**
 
 Built with the [Presage SmartSpectra SDK](https://smartspectra.presagetech.com/) for the [DEV Community SmartSpectra Challenge](https://dev.to/devteam/join-the-presage-smartspectra-sdk-challenge-3000-in-prizes-across-10-winners-1370).
