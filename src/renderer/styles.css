@@ -76,6 +76,13 @@ html, body {
   padding: 24px;
   text-align: left;
   margin-bottom: 30px;
+  cursor: default;
+}
+
+.consent-box p,
+.consent-box li,
+.consent-box h3 {
+  cursor: default;
 }
 
 .consent-box h3 {
@@ -94,11 +101,17 @@ html, body {
   font-size: 0.9rem;
 }
 
+.consent-checkbox,
+.consent-checkbox *,
+.consent-checkbox span,
+.consent-checkbox input[type="checkbox"] {
+  cursor: pointer !important;
+}
+
 .consent-checkbox {
   display: flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
   margin-top: 16px;
   font-size: 0.95rem;
 }
